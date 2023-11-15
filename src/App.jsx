@@ -1,41 +1,27 @@
-import { useRef, useState, useCallback, useEffect } from 'react';
+import { useRef, useState, useCallback } from "react";
 
-import Places from './components/Places.jsx';
-import Modal from './components/Modal.jsx';
-import DeleteConfirmation from './components/DeleteConfirmation.jsx';
-import logoImg from './assets/logo.png';
-import AvailablePlaces from './components/AvailablePlaces.jsx';
-import { fetchUserPlaces, updateUserPlaces } from './http.js';
-import Error from './components/Error.jsx';
+import Places from "./components/Places.jsx";
+import Modal from "./components/Modal.jsx";
+import DeleteConfirmation from "./components/DeleteConfirmation.jsx";
+import logoImg from "./assets/logo.png";
+import AvailablePlaces from "./components/AvailablePlaces.jsx";
+import { fetchUserPlaces, updateUserPlaces } from "./http.js";
+import Error from "./components/Error.jsx";
+import { useFetch } from "./hooks/useFetch.js";
 
 function App() {
   const selectedPlace = useRef();
 
-  const [userPlaces, setUserPlaces] = useState([]);
-
   const [modalIsOpen, setModalIsOpen] = useState(false);
 
-  const [errorUpdatingPlaces, setErrorUpdatingPlaces] = useState()
+  const [errorUpdatingPlaces, setErrorUpdatingPlaces] = useState();
 
-  const [isFetching, setIsFetching] = useState(false)
-
-  const [error, setError] = useState()
-
-  useEffect(() => {
-    async function fetchPlaces() {
-      setIsFetching(true)
-      try {
-        const places = await fetchUserPlaces()
-        setUserPlaces(places)
-      } catch (error) {
-        setError({ message: error.message || "Failed to fetch user places" })
-      }
-
-      setIsFetching(false)
-    }
-
-    fetchPlaces()
-  }, [])
+  const {
+    isFetching,
+    data: userPlaces,
+    setData: setUserPlaces,
+    error,
+  } = useFetch(fetchUserPlaces, []);
 
   function handleStartRemovePlace(place) {
     setModalIsOpen(true);
@@ -58,40 +44,52 @@ function App() {
     });
 
     try {
-      await updateUserPlaces([selectedPlace, ...userPlaces])
-    }
-    catch (error) {
-      setUserPlaces(userPlaces)
-      setErrorUpdatingPlaces({ message: error.message || "Failed to update places" })
+      await updateUserPlaces([selectedPlace, ...userPlaces]);
+    } catch (error) {
+      setUserPlaces(userPlaces);
+      setErrorUpdatingPlaces({
+        message: error.message || "Failed to update places",
+      });
     }
   }
 
-  const handleRemovePlace = useCallback(async function handleRemovePlace() {
-    setUserPlaces((prevPickedPlaces) =>
-      prevPickedPlaces.filter((place) => place.id !== selectedPlace.current.id)
-    );
+  const handleRemovePlace = useCallback(
+    async function handleRemovePlace() {
+      setUserPlaces((prevPickedPlaces) =>
+        prevPickedPlaces.filter(
+          (place) => place.id !== selectedPlace.current.id
+        )
+      );
 
-    try {
-      await updateUserPlaces(userPlaces.filter(place => place.id !== selectedPlace.current.id))
-    } catch (error) {
-      setUserPlaces(userPlaces)
-      setErrorUpdatingPlaces({ message: error.message || "Failed to delete places" })
-    }
+      try {
+        await updateUserPlaces(
+          userPlaces.filter((place) => place.id !== selectedPlace.current.id)
+        );
+      } catch (error) {
+        setUserPlaces(userPlaces);
+        setErrorUpdatingPlaces({
+          message: error.message || "Failed to delete places",
+        });
+      }
 
-    setModalIsOpen(false);
-  }, [userPlaces]);
+      setModalIsOpen(false);
+    },
+    [userPlaces, setUserPlaces]
+  );
 
   function handleError() {
-    setErrorUpdatingPlaces(null)
+    setErrorUpdatingPlaces(null);
   }
 
   return (
     <>
       <Modal open={errorUpdatingPlaces} onClose={handleError}>
         {errorUpdatingPlaces && (
-          <Error title="An error occured!"
+          <Error
+            title="An error occured!"
             message={errorUpdatingPlaces.message}
-            onConfirm={handleError}></Error>
+            onConfirm={handleError}
+          ></Error>
         )}
       </Modal>
 
@@ -111,15 +109,19 @@ function App() {
         </p>
       </header>
       <main>
-        {error && <Error title="An error occured" message={error.message}></Error>}
-        {!error && <Places
-          title="I'd like to visit ..."
-          fallbackText="Select the places you would like to visit below."
-          places={userPlaces}
-          isLoading={isFetching}
-          loadingText="Fetching your places..."
-          onSelectPlace={handleStartRemovePlace}
-        />}
+        {error && (
+          <Error title="An error occured" message={error.message}></Error>
+        )}
+        {!error && (
+          <Places
+            title="I'd like to visit ..."
+            fallbackText="Select the places you would like to visit below."
+            places={userPlaces}
+            isLoading={isFetching}
+            loadingText="Fetching your places..."
+            onSelectPlace={handleStartRemovePlace}
+          />
+        )}
 
         <AvailablePlaces onSelectPlace={handleSelectPlace} />
       </main>
